@@ -1,0 +1,25 @@
+# The organisers' evaluation container (github.com/SynthRAD2025/evaluation @ 99e9ef4), Python 3.11.
+# TotalSegmentator comes separately (requirements-nodeps.txt), as the container copies its source in.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.6.0+cpu
+pyradplan==0.2.8
+monai==1.5.0
+# numpy 2: pyRadPlan 0.2.8 uses np.bool (gone in numpy 1.x after 1.24)
+numpy==2.2.6
+# the container's nnU-Net submodule commit
+nnunetv2 @ https://github.com/MIC-DKFZ/nnUNet/archive/bb1b8090f01a1a7e175b74fa5fbb61935a292f8f.tar.gz
+pymedphys
+pymatreader
+SimpleITK
+nibabel
+scikit-image
+scipy
+pandas
+pyyaml
+p_tqdm
+requests
+dicom2nifti
+xvfbwrapper
+acvl_utils
+dynamic_network_architectures
+batchgeneratorsv2

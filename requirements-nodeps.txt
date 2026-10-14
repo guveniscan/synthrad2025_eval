@@ -1,0 +1,3 @@
+# Installed with --no-deps: the container's TotalSegmentator submodule commit, without its pins
+# (numpy<2, a py3.6 dataclasses backport that shadows the standard library).
+TotalSegmentator @ https://github.com/wasserth/TotalSegmentator/archive/704282af7c86cfdb9d52239064c259ae97331d2d.tar.gz
