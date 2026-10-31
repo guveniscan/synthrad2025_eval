@@ -36,9 +36,11 @@ from .plans import PLANS_VERSION
 IMAGE = ["mae", "psnr", "ms_ssim"]
 SEG = ["DICE", "HD95"]
 DOSE = [f"{m}_{p}" for p in ("photon", "proton") for m in ("gamma_pass_rate", "mae", "dvh")]
-FIELDS = ["case", "region"] + IMAGE + SEG + DOSE + ["seconds"]
+# The DVH metric again with pyRadPlan 0.5.0's fixed D-value lookup (dose_metrics.fixed_get_dy); not on the leaderboard
+FIXED = ["dvh_fixed_photon", "dvh_fixed_proton"]
+FIELDS = ["case", "region"] + IMAGE + SEG + DOSE + FIXED + ["seconds"]
 # Report table 7, task 2 columns, for the summary
-LOWER_IS_BETTER = {"mae", "HD95", "mae_photon", "dvh_photon", "mae_proton", "dvh_proton"}
+LOWER_IS_BETTER = {"mae", "HD95", "mae_photon", "dvh_photon", "mae_proton", "dvh_proton"} | set(FIXED)
 
 
 def xyz(img: sitk.Image) -> np.ndarray:
@@ -157,7 +159,7 @@ def summarize(out: Path, other: Path | None = None) -> None:
 
 
 def table(rows: list[dict]) -> None:
-    cols = [k for k in IMAGE + SEG + DOSE if any(r.get(k) for r in rows)]
+    cols = [k for k in IMAGE + SEG + DOSE + FIXED if any(r.get(k) for r in rows)]
     print(f"\n{'region':<7}{'n':>4}  " + "  ".join(f"{k:>16}" for k in cols))
     for region in ["AB", "TH", "HN", "all"]:
         rs = [r for r in rows if region == "all" or r["region"] == region]
@@ -232,7 +234,7 @@ def main() -> None:
                 w.writerow({k: (round(v, 5) if isinstance(v, float) else v) for k, v in row.items()})
                 f.flush()
                 print(f"[{i}/{len(cases)}] {case.id}: " + "  ".join(
-                    f"{k} {row[k]:.4g}" for k in IMAGE + SEG + DOSE if k in row), flush=True)
+                    f"{k} {row[k]:.4g}" for k in IMAGE + SEG + DOSE + FIXED if k in row), flush=True)
         summarize(args.out)
     if failed:
         print(f"{len(failed)} failed: {' '.join(failed)}")

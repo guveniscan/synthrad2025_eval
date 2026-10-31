@@ -16,6 +16,43 @@ import math
 
 from pyRadPlan import load_patient, validate_stf, validate_pln, calc_dose_forward, validate_ct, CT, StructureSet, DVHCollection, DVH, plot_slice
 from pyRadPlan.core import Grid
+import contextlib  # synthrad_eval
+
+
+# synthrad_eval: DVH.get_dy as fixed upstream in pyRadPlan 0.5.0 (pyRadPlan/analysis/_dvh.py), copied
+# verbatim. BSD 3-Clause License, Copyright (c) 2024, DKFZ. In 0.2.8, the version the challenge used,
+# get_dy interpolates a fraction (y / 100) against a cumulative volume held in percent, with np.interp
+# on a decreasing curve, so every D2/D5/D98 is the top bin edge (2.4975 Gy). See the 0.5.0 changelog.
+def _get_dy_pyradplan_050(self, y):
+    y = np.asarray(y, dtype=np.float64)
+    if np.any(y < 0) or np.any(y > 100):
+        raise ValueError("Volume percentage must be between 0 and 100.")
+
+    # Dy is the largest quantity value still covering at least y percent of the
+    # volume, matching the "at least" reading of the cumulative DVH documented
+    # on :attr:`cumulative`. cum_volume decreases with dose, so the search runs
+    # over the reversed (increasing) array and the index is mapped back.
+    #
+    # This is deliberately not an interpolation across the cumulative curve: a
+    # uniformly irradiated region is a plateau in the DVH, and interpolating
+    # over it reports the dose at the wrong end of that plateau.
+    reversed_volume = self.cum_volume[::-1]
+    last = self.cum_volume.size - 1
+    index = last - np.searchsorted(reversed_volume, y, side="left")
+    index = np.clip(index, 0, last)
+    values = self.bins[index]
+    return float(values) if values.ndim == 0 else values
+
+
+@contextlib.contextmanager
+def fixed_get_dy():
+    """synthrad_eval: run the organisers' DVH metric with the pyRadPlan 0.5.0 get_dy, then restore 0.2.8's."""
+    original = DVH.get_dy
+    DVH.get_dy = _get_dy_pyradplan_050
+    try:
+        yield
+    finally:
+        DVH.get_dy = original
 
 class QualityIndicator():
     def __init__(self, dosecube, voi, prescribed_dose, num_points = 1000, max_value=2.5, D_values = [2, 5, 98], V_values=None):
@@ -208,11 +245,14 @@ class DoseMetrics():
 
         dvh_metric = self.get_dvh_metric(dose_ref, dose_sct, vois, reference_dose)
         gc.collect()
+        with fixed_get_dy():  # synthrad_eval: same formula and doses, upstream-fixed D-value lookup
+            dvh_metric_fixed = self.get_dvh_metric(dose_ref, dose_sct, vois, reference_dose)
 
         return {
             f'gamma_pass_rate_{particle}': gamma_pass_rate,
             f'mae_{particle}': dose_mae,
-            f'dvh_{particle}': dvh_metric
+            f'dvh_{particle}': dvh_metric,
+            f'dvh_fixed_{particle}': dvh_metric_fixed,  # synthrad_eval
         }
 
     def calculate_dose(self, ct, sct, cst, plan_path, refdose_path, particle):

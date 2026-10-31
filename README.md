@@ -103,6 +103,15 @@ the lung, where proton range is most sensitive to HU errors.
 
 **Use the dose metrics to compare models scored here, not as estimates of a leaderboard score.**
 
+## The DVH metric and pyRadPlan 0.2.8
+
+The challenge evaluated with pyRadPlan 0.2.8, whose `DVH.get_dy` returns the top bin edge
+(2.4975 Gy) for every volume percentage, fixed upstream in pyRadPlan 0.5.0 (see its changelog).
+In the DVH metric this makes the target D98 and OAR D2 terms always 0, and the OARs scored are the
+three with the highest mean dose. `dvh_photon`/`dvh_proton` keep this behaviour, as on the
+leaderboard. `dvh_fixed_photon`/`dvh_fixed_proton` are the same metric on the same doses with
+0.5.0's `get_dy` (copied verbatim, BSD 3-Clause, DKFZ); they are not challenge metrics.
+
 ## License
 
 GPL-3.0, as the vendored evaluation code.
